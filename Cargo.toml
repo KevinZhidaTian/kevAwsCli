@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 aws-config = "1.8.10"
-aws-sdk-dynamodb = "1.97.0"
+aws-sdk-dynamodb = "1.98.0"
 clap = { version = "4.5.51", features = ["cargo", "derive"] }
 comfy-table = "7.2.1"
 tokio = { version = "1.48.0", features = ["full"] }
