@@ -36,6 +36,7 @@ pub enum AWSService {
 #[command(author="Kevin Tian", version, about = "Cli Tool for some AWS services", long_about = None)]
 pub struct Args {
     #[arg(
+        global = true,
         short,
         long,
         default_value = "default",
