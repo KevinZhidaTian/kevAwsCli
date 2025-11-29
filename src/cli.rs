@@ -4,21 +4,7 @@ use aws_config::{
 };
 use clap::{Parser, Subcommand};
 
-#[derive(Debug, Clone, Subcommand)]
-pub enum DynamoDBAction {
-    ListSamples {
-        #[arg(short, long)]
-        table_name: String,
-    },
-    EmptyTable {
-        #[arg(short, long)]
-        table_name: String,
-    },
-    ScanTable {
-        #[arg(short, long)]
-        table_name: String,
-    },
-}
+use crate::dynamodb::actions::DynamoDBAction;
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum AWSService {
@@ -48,7 +34,7 @@ pub struct Args {
     pub aws_service: AWSService,
 }
 
-pub async fn get_aws_client_config(profile: String) -> SdkConfig {
+pub async fn get_aws_client_config(profile: &str) -> SdkConfig {
     let region_provider = RegionProviderChain::default_provider().or_else("eu-west-2");
 
     let credentials_provider = ProfileFileCredentialsProvider::builder()

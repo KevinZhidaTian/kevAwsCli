@@ -5,6 +5,7 @@ use std::fmt;
 pub enum CustomError {
     DynamoError(DynamoError),
     UnexpectedActionVariant(String),
+    InvalidInput(String),
 }
 
 impl fmt::Display for CustomError {
@@ -14,6 +15,7 @@ impl fmt::Display for CustomError {
                 write!(f, "Unexpected action variant: {}", msg)
             }
             CustomError::DynamoError(e) => write!(f, "AWS DynamoDB error: {}", e),
+            CustomError::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
         }
     }
 }

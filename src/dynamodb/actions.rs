@@ -1,7 +1,8 @@
 use crate::dynamodb::utils::{describe_table, print_dynamo_items};
 use crate::error::CustomError;
+use clap::Subcommand;
 
-use crate::cli::{DynamoDBAction, get_aws_client_config};
+use crate::cli::get_aws_client_config;
 use aws_sdk_dynamodb::{
     Client as DynamoClient,
     error::SdkError,
@@ -9,6 +10,30 @@ use aws_sdk_dynamodb::{
     types::{AttributeValue, KeyType},
 };
 use std::collections::HashMap;
+
+#[derive(Debug, Clone, Subcommand)]
+pub enum DynamoDBAction {
+    ListSamples {
+        #[arg(short, long)]
+        table_name: String,
+    },
+    EmptyTable {
+        #[arg(short, long)]
+        table_name: String,
+    },
+    ScanTable {
+        #[arg(short, long)]
+        table_name: String,
+    },
+    Query {
+        #[arg(short, long)]
+        table_name: String,
+        #[arg(short, long)]
+        pk: String,
+        #[arg(short, long)]
+        sk: Option<String>,
+    },
+}
 
 impl DynamoDBAction {
     pub async fn list_samples(
@@ -20,7 +45,7 @@ impl DynamoDBAction {
                 "Unexpected action for list_samples".to_string(),
             ));
         };
-        let config = get_aws_client_config(profile.clone().unwrap_or("default".to_string())).await;
+        let config = get_aws_client_config(&profile.clone().unwrap_or("default".to_string())).await;
         let db_client = DynamoClient::new(&config);
 
         let response = db_client
@@ -54,11 +79,11 @@ impl DynamoDBAction {
             return Ok(Vec::new());
         }
 
-        println!("Sample items from table {:?}: \n", table_name);
         let samples: Vec<HashMap<std::string::String, AttributeValue>> =
             scan_output.items().into_iter().cloned().collect();
 
-        let describe_table_response = describe_table(profile.clone().unwrap(), table_name).await?;
+        let describe_table_response =
+            describe_table(profile.clone().unwrap_or("default".to_string()), table_name).await?;
         print_dynamo_items(&samples, &describe_table_response);
 
         Ok(samples)
@@ -83,7 +108,7 @@ impl DynamoDBAction {
             }
         };
 
-        let config = get_aws_client_config(profile.clone().unwrap_or("default".to_string())).await;
+        let config = get_aws_client_config(&profile.clone().unwrap_or("default".to_string())).await;
         let db_client = DynamoClient::new(&config);
 
         let mut last_evaluated_key: Option<HashMap<String, AttributeValue>> = None;
@@ -121,7 +146,8 @@ impl DynamoDBAction {
             }
         }
 
-        let describe_table_response = describe_table(profile.clone().unwrap(), table_name).await?;
+        let describe_table_response =
+            describe_table(profile.clone().unwrap_or("default".to_string()), table_name).await?;
         print_dynamo_items(&all_items, &describe_table_response);
         Ok(all_items)
     }
@@ -133,10 +159,11 @@ impl DynamoDBAction {
             ));
         };
 
-        let config = get_aws_client_config(profile.clone().unwrap_or("default".to_string())).await;
+        let config = get_aws_client_config(&profile.clone().unwrap_or("default".to_string())).await;
         let db_client = DynamoClient::new(&config);
 
-        let describe_table_response = describe_table(profile.clone().unwrap(), table_name).await?;
+        let describe_table_response =
+            describe_table(profile.clone().unwrap_or("default".to_string()), table_name).await?;
 
         let key_schema = match describe_table_response.table {
             Some(description) => description.key_schema,
@@ -164,6 +191,25 @@ impl DynamoDBAction {
         }
 
         println!("Successfully emptied table: {}", table_name);
+        Ok(())
+    }
+
+    pub async fn query(&self, profile: Option<String>) -> Result<(), CustomError> {
+        let DynamoDBAction::Query { table_name, pk, sk } = self else {
+            return Err(CustomError::UnexpectedActionVariant(
+                "Unexpected action for query".to_string(),
+            ));
+        };
+
+        if pk.is_empty() {
+            return Err(CustomError::InvalidInput(
+                "Partition key (pk) must be provided for query.".to_string(),
+            ));
+        }
+
+        let config = get_aws_client_config(&profile.unwrap_or("default".to_string())).await;
+        let db_client = DynamoClient::new(&config);
+
         Ok(())
     }
 }

@@ -32,8 +32,20 @@ impl DynamicTable {
 
         for (k, v) in item {
             let key = k.into();
+            let value = v.into();
+
             self.headers.insert(key.clone());
-            row.insert(key, v.into());
+
+            if &key == &self.pk {
+                row.insert(format!("{} (PK)", &self.pk), value);
+            } else if Some(&key) == self.sk.as_ref() {
+                row.insert(
+                    format!("{} (SK)", self.sk.as_ref().unwrap()),
+                    value,
+                );
+            } else {
+                row.insert(key, value);
+            }
         }
 
         self.rows.push(row);
@@ -55,22 +67,24 @@ impl DynamicTable {
         let mut ordered_header = Vec::new();
 
         if self.headers.contains(&self.pk) {
-            ordered_header.push(self.pk.to_string());
+            ordered_header.push(format!("{} (PK)", &self.pk));
         }
 
         if self
             .headers
             .contains(self.sk.as_ref().unwrap_or(&String::from("Null")))
         {
-            ordered_header.push(self.sk.clone().unwrap_or(String::from("Null")));
+            ordered_header.push(format!(
+                "{} (SK)",
+                self.sk.clone().unwrap_or(String::from("Null"))
+            ));
         }
-
         ordered_header.extend(other_headers);
 
         ordered_header
     }
 
-    pub fn to_table(&mut self) -> Table {
+    pub fn convert_to_table(&mut self) -> Table {
         let mut table = Table::new();
 
         let headers: Vec<String> = self.ordered_header();
@@ -97,14 +111,12 @@ impl DynamicTable {
 }
 
 pub fn print_dynamo_items(
-    items: &Vec<HashMap<String, AttributeValue>>,
+    items: &[HashMap<String, AttributeValue>],
     table_desc: &DescribeTableOutput,
 ) {
     if items.is_empty() {
         return;
     }
-
-    // println!("{:#?}", table_desc.table);
 
     let pk = table_desc
         .table
@@ -126,33 +138,28 @@ pub fn print_dynamo_items(
                 .map(|schema| schema.attribute_name.clone())
         });
 
-    let mut dynamic_table = DynamicTable::new(pk.unwrap(), sk);
+    let mut dynamic_table = DynamicTable::new(pk.unwrap_or("PK".to_string()), sk);
 
     for item in items {
         let mut row = HashMap::new();
-        for (key, _) in item {
-            let cell_text = item
-                .get(key)
-                .map(format_attribute_value)
-                .unwrap_or_default();
+        for (key, value) in item {
+            let cell_text = format_attribute_value(value);
             row.insert(key, cell_text);
         }
 
         dynamic_table.add_row(row);
     }
 
-    // println!("{:?}", table.rows);
-
-    let print_table = dynamic_table.to_table();
+    let print_table = dynamic_table.convert_to_table();
 
     println!("{print_table}");
 }
 
 pub async fn describe_table(
     profile: String,
-    table_name: &String,
+    table_name: &str,
 ) -> Result<DescribeTableOutput, CustomError> {
-    let config = get_aws_client_config(profile).await;
+    let config = get_aws_client_config(&profile).await;
     let db_client = DynamoClient::new(&config);
 
     let describe_table_response = db_client

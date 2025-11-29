@@ -1,7 +1,5 @@
-use crate::{
-    cli::{AWSService, DynamoDBAction},
-    error::CustomError,
-};
+use crate::dynamodb::actions::DynamoDBAction;
+use crate::{cli::AWSService, error::CustomError};
 impl AWSService {
     pub async fn execute(&self, profile: Option<String>) -> Result<(), CustomError> {
         match self {
@@ -14,6 +12,9 @@ impl AWSService {
                 }
                 DynamoDBAction::ScanTable { .. } => {
                     action.scan_table(profile).await?;
+                }
+                DynamoDBAction::Query { .. } => {
+                    action.query(profile).await?;
                 }
             },
             AWSService::S3 { bucket_name } => {
