@@ -39,10 +39,7 @@ impl DynamicTable {
             if &key == &self.pk {
                 row.insert(format!("{} (PK)", &self.pk), value);
             } else if Some(&key) == self.sk.as_ref() {
-                row.insert(
-                    format!("{} (SK)", self.sk.as_ref().unwrap()),
-                    value,
-                );
+                row.insert(format!("{} (SK)", self.sk.as_ref().unwrap()), value);
             } else {
                 row.insert(key, value);
             }
@@ -51,7 +48,7 @@ impl DynamicTable {
         self.rows.push(row);
     }
 
-    fn ordered_header(&mut self) -> Vec<String> {
+    fn ordered_header(&self) -> Vec<String> {
         let mut other_headers: Vec<String> = self
             .headers
             .iter()
@@ -72,11 +69,11 @@ impl DynamicTable {
 
         if self
             .headers
-            .contains(self.sk.as_ref().unwrap_or(&String::from("Null")))
+            .contains(self.sk.as_ref().map_or("Null", |sk| sk))
         {
             ordered_header.push(format!(
                 "{} (SK)",
-                self.sk.clone().unwrap_or(String::from("Null"))
+                self.sk.clone().unwrap()
             ));
         }
         ordered_header.extend(other_headers);
@@ -118,25 +115,20 @@ pub fn print_dynamo_items(
         return;
     }
 
-    let pk = table_desc
-        .table
-        .as_ref()
-        .and_then(|t| t.key_schema.as_ref())
-        .and_then(|ks| {
-            ks.iter()
-                .find(|schema| schema.key_type == KeyType::Hash)
-                .map(|schema| schema.attribute_name.clone())
-        });
+    fn get_key_name(table_desc: &DescribeTableOutput, key_type: KeyType) -> Option<String> {
+        table_desc
+            .table
+            .as_ref()
+            .and_then(|t| t.key_schema.as_ref())
+            .and_then(|ks| {
+                ks.iter()
+                    .find(|schema| schema.key_type == key_type)
+                    .map(|schema| schema.attribute_name.clone())
+            })
+    }
 
-    let sk = table_desc
-        .table
-        .as_ref()
-        .and_then(|t| t.key_schema.as_ref())
-        .and_then(|ks| {
-            ks.iter()
-                .find(|schema| schema.key_type == KeyType::Range)
-                .map(|schema| schema.attribute_name.clone())
-        });
+    let pk = get_key_name(table_desc, KeyType::Hash);
+    let sk = get_key_name(table_desc, KeyType::Range);
 
     let mut dynamic_table = DynamicTable::new(pk.unwrap_or("PK".to_string()), sk);
 
