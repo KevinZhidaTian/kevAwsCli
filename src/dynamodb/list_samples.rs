@@ -10,14 +10,14 @@ use std::collections::HashMap;
 impl DynamoDBAction {
     pub async fn list_samples(
         &self,
-        profile: Option<String>,
-    ) -> Result<Vec<HashMap<std::string::String, AttributeValue>>, CustomError> {
+        profile: &String,
+    ) -> Result<Vec<HashMap<String, AttributeValue>>, CustomError> {
         let DynamoDBAction::ListSamples { table_name } = self else {
             return Err(CustomError::UnexpectedActionVariant(
                 "Unexpected action for list_samples".to_string(),
             ));
         };
-        let config = get_aws_client_config(&profile.clone().unwrap_or("default".to_string())).await;
+        let config = get_aws_client_config(profile).await;
         let db_client = DynamoClient::new(&config);
 
         let response = db_client
@@ -54,8 +54,7 @@ impl DynamoDBAction {
         let samples: Vec<HashMap<std::string::String, AttributeValue>> =
             scan_output.items().into_iter().cloned().collect();
 
-        let describe_table_response =
-            describe_table(profile.clone().unwrap_or("default".to_string()), table_name).await?;
+        let describe_table_response = describe_table(profile, table_name).await?;
         print_dynamo_items(&samples, &describe_table_response);
 
         Ok(samples)

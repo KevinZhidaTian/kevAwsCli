@@ -71,10 +71,7 @@ impl DynamicTable {
             .headers
             .contains(self.sk.as_ref().map_or("Null", |sk| sk))
         {
-            ordered_header.push(format!(
-                "{} (SK)",
-                self.sk.clone().unwrap()
-            ));
+            ordered_header.push(format!("{} (SK)", self.sk.clone().unwrap()));
         }
         ordered_header.extend(other_headers);
 
@@ -107,24 +104,25 @@ impl DynamicTable {
     }
 }
 
+pub fn get_key_name(table_desc: &DescribeTableOutput, key_type: KeyType) -> Option<String> {
+    table_desc
+        .table
+        .as_ref()
+        .and_then(|t| t.key_schema.as_ref())
+        .and_then(|ks| {
+            ks.iter()
+                .find(|schema| schema.key_type == key_type)
+                .map(|schema| schema.attribute_name.clone())
+        })
+}
+
 pub fn print_dynamo_items(
     items: &[HashMap<String, AttributeValue>],
     table_desc: &DescribeTableOutput,
 ) {
     if items.is_empty() {
+        println!("No items found.");
         return;
-    }
-
-    fn get_key_name(table_desc: &DescribeTableOutput, key_type: KeyType) -> Option<String> {
-        table_desc
-            .table
-            .as_ref()
-            .and_then(|t| t.key_schema.as_ref())
-            .and_then(|ks| {
-                ks.iter()
-                    .find(|schema| schema.key_type == key_type)
-                    .map(|schema| schema.attribute_name.clone())
-            })
     }
 
     let pk = get_key_name(table_desc, KeyType::Hash);
@@ -148,10 +146,10 @@ pub fn print_dynamo_items(
 }
 
 pub async fn describe_table(
-    profile: String,
+    profile: &String,
     table_name: &str,
 ) -> Result<DescribeTableOutput, CustomError> {
-    let config = get_aws_client_config(&profile).await;
+    let config = get_aws_client_config(profile).await;
     let db_client = DynamoClient::new(&config);
 
     let describe_table_response = db_client

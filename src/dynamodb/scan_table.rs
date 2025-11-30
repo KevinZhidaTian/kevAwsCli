@@ -8,8 +8,8 @@ use std::collections::HashMap;
 impl DynamoDBAction {
     pub async fn scan_table(
         &self,
-        profile: Option<String>,
-    ) -> Result<Vec<HashMap<std::string::String, AttributeValue>>, CustomError> {
+        profile: &String,
+    ) -> Result<Vec<HashMap<String, AttributeValue>>, CustomError> {
         let table_name = match self {
             DynamoDBAction::ScanTable { table_name } => Some(table_name),
             DynamoDBAction::EmptyTable { table_name } => Some(table_name),
@@ -25,7 +25,7 @@ impl DynamoDBAction {
             }
         };
 
-        let config = get_aws_client_config(&profile.clone().unwrap_or("default".to_string())).await;
+        let config = get_aws_client_config(profile).await;
         let db_client = DynamoClient::new(&config);
 
         let mut last_evaluated_key: Option<HashMap<String, AttributeValue>> = None;
@@ -63,8 +63,7 @@ impl DynamoDBAction {
             }
         }
 
-        let describe_table_response =
-            describe_table(profile.clone().unwrap_or("default".to_string()), table_name).await?;
+        let describe_table_response = describe_table(profile, table_name).await?;
         print_dynamo_items(&all_items, &describe_table_response);
         Ok(all_items)
     }

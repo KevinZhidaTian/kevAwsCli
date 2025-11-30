@@ -1,4 +1,4 @@
-use aws_sdk_dynamodb::types::AttributeValue;
+use aws_sdk_dynamodb::types::{AttributeValue, ScalarAttributeType};
 
 pub fn format_attribute_value(value: &AttributeValue) -> String {
     match value {
@@ -26,5 +26,14 @@ pub fn format_attribute_value(value: &AttributeValue) -> String {
             format!("{{ {} }}", items.join(", "))
         }
         _ => format!("{:?}", value),
+    }
+}
+
+pub fn to_attribute_value(raw_value: &str, attribute_type: &ScalarAttributeType) -> AttributeValue {
+    match attribute_type {
+        ScalarAttributeType::S => AttributeValue::S(raw_value.to_string()),
+        ScalarAttributeType::N => AttributeValue::N(raw_value.to_string()),
+        ScalarAttributeType::B => AttributeValue::B(raw_value.as_bytes().to_vec().into()),
+        _ => AttributeValue::S(raw_value.to_string()), // Default to String if type is unknown
     }
 }
